@@ -284,14 +284,15 @@ const FONT_PAIRS=[
 {name:"Кокон",ref:"Biolilbert + Raleway / референс",head:"Playfair Display",body:"Raleway"},
 {name:"Дом цветов",ref:"Script Thin Pen + Minipax / референс",head:"Marck Script",body:"Oranienbaum"}
 ];
-function openFontPairs(){renderFontPairs();$("fontPairsDialog").showModal()}
+let pairPreviewObserver=null;
+function openFontPairs(){$("fontPairsDialog").showModal();renderFontPairs()}
 function renderFontPairs(){
  const list=$("fontPairsList"),query=$("fontPairsSearch").value.trim().toLocaleLowerCase("ru");
- list.replaceChildren();
+ list.replaceChildren();if(pairPreviewObserver)pairPreviewObserver.disconnect();pairPreviewObserver=new IntersectionObserver(entries=>{for(const entry of entries){if(!entry.isIntersecting)continue;const card=entry.target,pair=FONT_PAIRS[Number(card.dataset.pairIndex)];pairPreviewObserver.unobserve(card);if(!pair)continue;Promise.allSettled([ensureWebFont(pair.head),ensureWebFont(pair.body)]).then(()=>{if(!card.isConnected)return;const h=card.querySelector(".font-pair-head"),b=card.querySelector(".font-pair-body");h.style.fontFamily='"'+pair.head+'",serif';b.style.fontFamily='"'+pair.body+'",sans-serif'})}},{root:null,rootMargin:"150px"});
  const found=FONT_PAIRS.filter(p=>(p.name+" "+p.ref+" "+p.head+" "+p.body).toLocaleLowerCase("ru").includes(query));
  if(!found.length){const empty=document.createElement("p");empty.className="hint";empty.textContent="Ничего не найдено";list.append(empty);return}
  for(const pair of found){
-  const card=document.createElement("article");card.className="font-pair-card";
+  const card=document.createElement("article");card.className="font-pair-card";card.dataset.pairIndex=String(FONT_PAIRS.indexOf(pair));
   const heading=document.createElement("div");heading.className="font-pair-heading";heading.textContent=pair.name;
   const sample=document.createElement("div");sample.className="font-pair-sample";
   const h=document.createElement("div");h.className="font-pair-head";h.textContent="КРАСИВЫЙ ЗАГОЛОВОК";h.style.fontFamily='"'+pair.head+'",serif';
@@ -300,7 +301,7 @@ function renderFontPairs(){
   const origin=document.createElement("small");origin.className="font-pair-origin";origin.textContent=pair.ref.includes("референс")?"Аналог: "+pair.ref:pair.ref;
   const apply=document.createElement("button");apply.textContent="Применить пару";apply.onclick=()=>applyFontPair(pair,apply);
   sample.append(h,b);card.append(heading,sample,names,origin,apply);list.append(card);
-  Promise.allSettled([ensureWebFont(pair.head),ensureWebFont(pair.body)]).then(()=>{h.style.fontFamily='"'+pair.head+'",serif';b.style.fontFamily='"'+pair.body+'",sans-serif'});
+  pairPreviewObserver.observe(card);
  }
 }
 async function applyFontPair(pair,button){
